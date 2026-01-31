@@ -18,7 +18,6 @@
 #define ART_LIBARTBASE_BASE_MACROS_H_
 
 #include <stddef.h>  // for size_t
-#include <unistd.h>  // for TEMP_FAILURE_RETRY
 
 #include "android-base/format.h"
 #include "android-base/macros.h"
@@ -100,7 +99,15 @@ template<typename T> ART_FRIEND_TEST(test_set_name, individual_test)
 // Define that a position within code is unreachable, for example:
 //   int foo () { LOG(FATAL) << "Don't call me"; UNREACHABLE(); }
 // without the UNREACHABLE a return statement would be necessary.
+#if __cplusplus >= 202302L
+#define UNREACHABLE() std::unreachable()
+#else
+#ifdef _MSC_VER
+#define UNREACHABLE() __assume(false)
+#else
 #define UNREACHABLE  __builtin_unreachable
+#endif
+#endif
 
 // Add the C++11 noreturn attribute.
 #define NO_RETURN [[ noreturn ]]  // NOLINT[whitespace/braces] [5]

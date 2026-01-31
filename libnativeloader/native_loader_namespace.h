@@ -25,10 +25,13 @@
 
 #include <android-base/logging.h>
 #include <android-base/result.h>
+#if __has_include(<android/dlext.h>)
 #include <android/dlext.h>
+#endif
 #include <log/log.h>
 #include <nativebridge/native_bridge.h>
 
+struct android_namespace_t;
 namespace android {
 
 using android::base::Result;

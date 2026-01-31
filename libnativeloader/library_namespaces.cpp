@@ -20,8 +20,12 @@
 
 #include "library_namespaces.h"
 
+#ifdef _MSC_VER
+#include <utils/direct.h>
+#else
 #include <dirent.h>
 #include <dlfcn.h>
+#endif
 #include <stdio.h>
 
 #include <algorithm>
@@ -164,7 +168,7 @@ void LibraryNamespaces::Initialize() {
   // For now we rely on CTS test to catch things like this but
   // it should probably be addressed in the future.
   for (const std::string& soname : android::base::Split(preloadable_public_libraries(), ":")) {
-    void* handle = OpenSystemLibrary(soname.c_str(), RTLD_NOW | RTLD_NODELETE);
+    void* handle = OpenSystemLibrary(soname.c_str(), /*RTLD_NOW | RTLD_NODELETE*/0);
     LOG_ALWAYS_FATAL_IF(handle == nullptr,
                         "Error preloading public library %s: %s", soname.c_str(), dlerror());
   }

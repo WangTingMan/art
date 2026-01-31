@@ -18,13 +18,10 @@
 
 #include "nativebridge/native_bridge.h"
 
-#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <sys/mount.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include <cstring>
 
@@ -33,6 +30,13 @@
 
 #ifdef ART_TARGET_ANDROID
 #include "nativeloader/dlext_namespaces.h"
+#endif
+
+#include <cutils/native_handle.h>
+#include <utils/direct.h>
+
+#ifndef RTLD_LAZY
+#define RTLD_LAZY 0
 #endif
 
 namespace android {
@@ -306,6 +310,7 @@ bool NeedsNativeBridge(const char* instruction_set) {
 static bool MountCpuinfo(const char* cpuinfo_path) {
   // If the file does not exist, the mount command will fail,
   // so we save the extra file existence check.
+#ifndef _MSC_VER
   if (TEMP_FAILURE_RETRY(mount(cpuinfo_path,        // Source.
                                "/proc/cpuinfo",     // Target.
                                nullptr,             // FS type.
@@ -314,6 +319,7 @@ static bool MountCpuinfo(const char* cpuinfo_path) {
     ALOGW("Failed to bind-mount %s as /proc/cpuinfo: %s", cpuinfo_path, strerror(errno));
     return false;
   }
+#endif
   return true;
 }
 #endif
@@ -488,7 +494,7 @@ bool InitializeNativeBridge(JNIEnv* env, const char* instruction_set) {
       struct stat st;
       if (stat(app_code_cache_dir, &st) == -1) {
         if (errno == ENOENT) {
-          if (mkdir(app_code_cache_dir, S_IRWXU | S_IRWXG | S_IXOTH) == -1) {
+          if (mkdir(app_code_cache_dir, /*S_IRWXU | S_IRWXG | S_IXOTH*/0) == -1) {
             ALOGW("Cannot create code cache directory %s: %s.",
                   app_code_cache_dir, strerror(errno));
             ReleaseAppCodeCacheDir();

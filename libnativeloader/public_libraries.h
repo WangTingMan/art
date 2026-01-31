@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <map>
 #include <string>
+#include <functional>
 
 #include <android-base/result.h>
 

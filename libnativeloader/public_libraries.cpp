@@ -18,7 +18,7 @@
 
 #include "public_libraries.h"
 
-#include <dirent.h>
+#include <utils/direct.h>
 
 #include <algorithm>
 #include <map>
@@ -34,8 +34,10 @@
 #include <log/log.h>
 
 #if defined(ART_TARGET_ANDROID)
+#ifndef _MSC_VER
 #include <android-modules-utils/sdk_level.h>
 #include <android/sysprop/VndkProperties.sysprop.h>
+#endif
 #endif
 
 #include "utils.h"
@@ -110,7 +112,7 @@ void ReadExtensionLibraries(const char* dirname, std::vector<std::string>* sonam
     // Failing to opening the dir is not an error, which can happen in
     // webview_zygote.
     while (struct dirent* ent = readdir(dir.get())) {
-      if (ent->d_type != DT_REG && ent->d_type != DT_LNK) {
+      if (ent->d_type != DT_REG /*&& ent->d_type != DT_LNK*/) {
         continue;
       }
       const std::string filename(ent->d_name);
@@ -429,16 +431,20 @@ bool is_product_treblelized() {
 #if defined(ART_TARGET_ANDROID)
   // Product is treblelized iff the sdk version is newer than U
   // or launching version is R or newer or ro.product.vndk.version is defined
+#ifdef _MSC_VER
+    return false;
+#else
   return android::modules::sdklevel::IsAtLeastV() ||
          android::base::GetIntProperty("ro.product.first_api_level", 0) >= __ANDROID_API_R__ ||
          android::sysprop::VndkProperties::product_vndk_version().has_value();
+#endif
 #else
   return false;
 #endif
 }
 
 std::string get_vndk_version(bool is_product_vndk) {
-#if defined(ART_TARGET_ANDROID)
+#if defined(ART_TARGET_ANDROID) && !defined(_MSC_VER)
   if (is_product_vndk) {
     return android::sysprop::VndkProperties::product_vndk_version().value_or("");
   }

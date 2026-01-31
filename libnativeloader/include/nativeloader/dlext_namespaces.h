@@ -17,8 +17,12 @@
 #ifndef ART_LIBNATIVELOADER_INCLUDE_NATIVELOADER_DLEXT_NAMESPACES_H_
 #define ART_LIBNATIVELOADER_INCLUDE_NATIVELOADER_DLEXT_NAMESPACES_H_
 
+#if __has_include(<android/dlext.h>)
 #include <android/dlext.h>
+#endif
 #include <stdbool.h>
+
+#include <cutils/bitops.h>
 
 __BEGIN_DECLS
 

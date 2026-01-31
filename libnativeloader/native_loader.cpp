@@ -18,7 +18,10 @@
 
 #include "nativeloader/native_loader.h"
 
+#if __has_include(<dlfcn.h>)
 #include <dlfcn.h>
+#endif
+
 #include <sys/types.h>
 
 #include <algorithm>
@@ -40,12 +43,16 @@
 #include "public_libraries.h"
 
 #ifdef ART_TARGET_ANDROID
+#ifndef _MSC_VER
 #include "android-modules-utils/sdk_level.h"
 #include "android/api-level.h"
+#endif
 #include "library_namespaces.h"
 #include "log/log.h"
 #include "nativeloader/dlext_namespaces.h"
 #endif
+
+#include <cutils/native_handle.h>
 
 namespace android {
 
@@ -283,11 +290,15 @@ static bool ShouldBypassLoadingForB349878424() {
       stat("/system/lib64/libwalkstack.so", &st) != 0) {
     return false;
   }
+#ifdef _MSC_VER
+  return false;
+#else
   std::string property = android::base::GetProperty("ro.product.build.fingerprint", "");
   return android_get_device_api_level() == 33 &&
       (property.starts_with("Xiaomi") ||
        property.starts_with("Redmi") ||
        property.starts_with("POCO"));
+#endif
 }
 #endif
 
@@ -308,6 +319,9 @@ void* OpenNativeLibrary(JNIEnv* env,
     if (caller_location != nullptr) {
       std::optional<NativeLoaderNamespace> ns = FindApexNamespace(caller_location);
       if (ns.has_value()) {
+#ifdef _MSC_VER
+        return nullptr;
+#else
         const android_dlextinfo dlextinfo = {
             .flags = ANDROID_DLEXT_USE_NAMESPACE,
             .library_namespace = ns.value().ToRawAndroidNamespace(),
@@ -323,6 +337,7 @@ void* OpenNativeLibrary(JNIEnv* env,
           *error_msg = dlerror_msg;
         }
         return handle;
+#endif
       }
     }
 
@@ -376,7 +391,7 @@ void* OpenNativeLibrary(JNIEnv* env,
       nativeloader::IsPartitionNativeLibPath(path) &&
       // Don't do this if the system image is older than V, to avoid any compat
       // issues with apps and shared libs in them.
-      android::modules::sdklevel::IsAtLeastV()) {
+      /*android::modules::sdklevel::IsAtLeastV()*/true) {
     nativeloader::ApiDomain caller_api_domain = nativeloader::GetApiDomainFromPath(caller_location);
     if (caller_api_domain != nativeloader::API_DOMAIN_DEFAULT) {
       nativeloader::ApiDomain library_api_domain = nativeloader::GetApiDomainFromPath(path);

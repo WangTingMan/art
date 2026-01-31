@@ -20,7 +20,6 @@
 
 #include "native_loader_namespace.h"
 
-#include <dlfcn.h>
 
 #include <functional>
 
@@ -29,6 +28,8 @@
 #include <nativebridge/native_bridge.h>
 
 #include "nativeloader/dlext_namespaces.h"
+
+#include <cutils/native_handle.h>
 
 using android::base::Error;
 
@@ -52,7 +53,10 @@ std::string GetLinkerError(bool is_bridged) {
 Result<NativeLoaderNamespace> NativeLoaderNamespace::GetExportedNamespace(const std::string& name,
                                                                           bool is_bridged) {
   if (!is_bridged) {
-    android_namespace_t* raw = android_get_exported_namespace(name.c_str());
+      android_namespace_t* raw = nullptr;
+#ifndef _MSC_VER
+      raw = android_get_exported_namespace( name.c_str() );
+#endif
     if (raw != nullptr) {
       return NativeLoaderNamespace(name, raw);
     }
@@ -125,9 +129,11 @@ Result<NativeLoaderNamespace> NativeLoaderNamespace::Create(
   }
 
   if (!is_bridged) {
-    android_namespace_t* raw =
+      android_namespace_t* raw = nullptr;
+#ifndef _MSC_VER
         android_create_namespace(name.c_str(), nullptr, search_paths.c_str(), type,
                                  permitted_paths.c_str(), effective_parent.ToRawAndroidNamespace());
+#endif
     if (raw != nullptr) {
       return NativeLoaderNamespace(name, raw);
     }
@@ -148,11 +154,13 @@ Result<void> NativeLoaderNamespace::Link(const NativeLoaderNamespace* target,
   LOG_ALWAYS_FATAL_IF(shared_libs.empty(), "empty share lib when linking %s to %s",
                       this->name().c_str(), target == nullptr ? "default" : target->name().c_str());
   if (!IsBridged()) {
+#ifndef _MSC_VER
     if (android_link_namespaces(this->ToRawAndroidNamespace(),
                                 target == nullptr ? nullptr : target->ToRawAndroidNamespace(),
                                 shared_libs.c_str())) {
       return {};
     }
+#endif
   } else {
     if (NativeBridgeLinkNamespaces(this->ToRawNativeBridgeNamespace(),
                                    target == nullptr ? nullptr : target->ToRawNativeBridgeNamespace(),
@@ -165,6 +173,9 @@ Result<void> NativeLoaderNamespace::Link(const NativeLoaderNamespace* target,
 
 Result<void*> NativeLoaderNamespace::Load(const char* lib_name) const {
   if (!IsBridged()) {
+#ifdef _MSC_VER
+      return nullptr;
+#else
     android_dlextinfo extinfo;
     extinfo.flags = ANDROID_DLEXT_USE_NAMESPACE;
     extinfo.library_namespace = this->ToRawAndroidNamespace();
@@ -172,6 +183,7 @@ Result<void*> NativeLoaderNamespace::Load(const char* lib_name) const {
     if (handle != nullptr) {
       return handle;
     }
+#endif
   } else {
     void* handle =
         NativeBridgeLoadLibraryExt(lib_name, RTLD_NOW, this->ToRawNativeBridgeNamespace());
